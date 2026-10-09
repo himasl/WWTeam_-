@@ -17,7 +17,11 @@ function rows(id, items, make) {
   $(id).parentElement.hidden = items.length === 0;
 }
 
-fetch("/api/stats").then((r) => r.json()).then((s) => {
+fetch("/api/stats").then(async (r) => {
+  const s = await r.json();
+  if (!r.ok) throw { detail: s.detail };
+  return s;
+}).then((s) => {
   $("total").textContent = s.total;
   $("share").textContent = (s.total ? Math.round((s.known / s.total) * 100) : 0) + "%";
   $("ms").textContent = (s.ms / 1000).toFixed(1).replace(".", ",") + " с";
@@ -40,4 +44,10 @@ fetch("/api/stats").then((r) => r.json()).then((s) => {
     return [td, cell(o.n, "n")];
   });
   rows("topics", s.topics, (t) => [cell(t.topic), cell(t.n, "n")]);
+}).catch((e) => {
+  const p = document.createElement("p");
+  p.className = "lead";
+  p.textContent = e.detail || "Сервер не отвечает, обновите страницу позже.";
+  document.querySelector(".tiles").replaceWith(p);
+  document.querySelector(".cols").hidden = true;
 });

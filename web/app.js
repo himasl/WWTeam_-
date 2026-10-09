@@ -37,8 +37,9 @@ async function ask(text) {
       body: JSON.stringify({ q, novice: $("novice").checked, product }),
     });
     data = await res.json();
+    if (!res.ok) data = { error: data.detail || "Сервер вернул ошибку " + res.status };
   } catch (e) {
-    data = { error: true };
+    data = { error: "Сервер не отвечает. Проверьте, что он запущен, и задайте вопрос ещё раз." };
   }
   $("send").disabled = false;
   $("send").textContent = "Спросить";
@@ -54,7 +55,7 @@ function show(q, data) {
   $("terms-box").hidden = true;
   if (data.error) {
     $("answer").className = "answer unknown";
-    $("text").textContent = "Сервер не отвечает. Проверьте, что он запущен, и задайте вопрос ещё раз.";
+    $("text").textContent = data.error;
     $("meta").textContent = "";
     fill("ask", []);
     fill("offer", []);
@@ -67,15 +68,22 @@ function show(q, data) {
   if (!data.known) {
     $("answer").className = "answer unknown";
     $("text").textContent = "В базе знаний нет ответа на этот вопрос. Не отвечайте клиенту наугад.";
-    const btn = el("button", "Передать вопрос в поддержку");
+    const btn = el("button", lastId ? "Передать вопрос в поддержку" : "Журнал недоступен, передать нельзя");
+    btn.disabled = !lastId;
     btn.onclick = async () => {
-      await fetch("/api/escalate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: lastId }),
-      });
-      btn.textContent = "Вопрос передан в поддержку";
       btn.disabled = true;
+      try {
+        const res = await fetch("/api/escalate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: lastId }),
+        });
+        if (!res.ok) throw new Error();
+        btn.textContent = "Вопрос передан в поддержку";
+      } catch (e) {
+        btn.textContent = "Не удалось передать, попробуйте ещё раз";
+        btn.disabled = false;
+      }
     };
     $("foot").append(btn, el("span", "Вопрос попадёт в список пробелов базы знаний."));
     return;

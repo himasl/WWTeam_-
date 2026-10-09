@@ -4,23 +4,13 @@ import re
 
 import snowballstemmer
 
-from .config import MIN_COVER, ROOT
+from .config import COVER_HIGH, COVER_LOW, ROOT
 
 KB = ROOT / "kb"
 stem = snowballstemmer.stemmer("russian").stemWord
 
-STOP = set("""а в во и или к ко на не о об от по с со у за из для до при это что как какой какая какие
-какое каков сколько ли же бы есть если то так там где когда кто чем чего мне нам он она они его ее их
-можно нужно надо будет быть ему клиент клиента клиенту клиентом втб банк банка банке мой моя вы я
-подскажи расскажи скажи про такое такой спрашивает спрашивают хочет хотят интересует интересуется
-говорит узнать дают дает бывает нужен нужна нужны могу может можем делать если какого какую каким какое какие чему
-сейчас вообще именно тоже еще уже или либо ну вот""".split())
-SAME = {"кэшбэк": "кешбэк", "кэшбек": "кешбэк", "кешбек": "кешбэк", "стоит": "стоимость",
-        "цена": "стоимость", "платить": "стоимость", "sms": "смс", "кредитка": "кредитная",
-        "кредитке": "кредитная", "кредитку": "кредитная", "кредитки": "кредитная",
-        "дебетовка": "дебетовая", "жкх": "жку", "налик": "наличные", "нал": "наличные",
-        "процент": "ставка", "закрыть": "закрытие", "закрою": "закрытие", "снять": "снятие",
-        "снимать": "снятие", "перевести": "перевод", "открыть": "открытие", "годовых": "ставка"}
+STOP = set((KB / "stopwords.txt").read_text(encoding="utf-8").split())
+SAME = json.loads((KB / "synonyms.json").read_text(encoding="utf-8"))
 
 
 def stems(text):
@@ -68,6 +58,13 @@ for c in CHUNKS:
         DF[t] = DF.get(t, 0) + 1
 IDF = {t: math.log(1 + (N - n + 0.5) / (n + 0.5)) for t, n in DF.items()}
 MAX_IDF = math.log(1 + (N + 0.5) / 0.5)
+OUT = {stem(w) for w in (KB / "out_of_scope.txt").read_text(encoding="utf-8").split()}
+
+
+def weight(t):
+    if t in IDF:
+        return IDF[t]
+    return MAX_IDF if t in OUT else 0.5
 
 
 def search(question, product="", n=3):
@@ -86,10 +83,13 @@ def search(question, product="", n=3):
     scored.sort(key=lambda x: -x[0])
     if not scored:
         return [], 0, q
-    top = set(scored[0][1]["tokens"])
-    total = sum(IDF.get(t, MAX_IDF) for t in q)
-    cover = sum(IDF.get(t, MAX_IDF) for t in q if t in top) / total
-    return [c for _, c in scored[:n]], cover, q
+    total = sum(weight(t) for t in q)
+    ranked = []
+    for score, c in scored[:6]:
+        have = set(c["tokens"])
+        ranked.append((sum(weight(t) for t in q if t in have) / total, score, c))
+    ranked.sort(key=lambda x: (-round(x[0], 2), -x[1]))
+    return [c for _, _, c in ranked[:n]], ranked[0][0], q
 
 
 def best_lines(chunk, q, n=3):
@@ -111,5 +111,9 @@ def terms(text):
     return found[:4]
 
 
-def known(cover):
-    return cover >= MIN_COVER
+def level(cover):
+    if cover >= COVER_HIGH:
+        return "high"
+    if cover >= COVER_LOW:
+        return "low"
+    return "none"
