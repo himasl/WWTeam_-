@@ -74,8 +74,13 @@ def ask(question, chunks, novice):
             {"role": "user", "content": "\n\n".join(parts) + "\n\nВопрос: " + question},
         ],
     }
+    if config.OLLAMA_THINK in ("false", "true"):
+        body["think"] = config.OLLAMA_THINK == "true"
     try:
         r = httpx.post(config.OLLAMA_URL + "/api/chat", json=body, headers=headers, timeout=config.OLLAMA_TIMEOUT)
+        if r.status_code == 400 and "think" in r.text and "think" in body:
+            body.pop("think")
+            r = httpx.post(config.OLLAMA_URL + "/api/chat", json=body, headers=headers, timeout=config.OLLAMA_TIMEOUT)
         r.raise_for_status()
         return parse(r.json()["message"]["content"])
     except httpx.TimeoutException:

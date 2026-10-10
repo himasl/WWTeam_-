@@ -75,6 +75,24 @@ for name, content, engine, known in cases:
     code, data = ask({"q": GOOD})
     check(f"{name}: 200, режим «{engine}», ответ {'есть' if known else 'нет'}",
           code == 200 and data["engine"] == engine and data["known"] == known, f"{code} {data.get('engine')} {data.get('known')} {data.get('detail')}")
+calls = []
+def picky(*args, **kwargs):
+    calls.append("think" in kwargs["json"])
+    request = httpx.Request("POST", "http://model.test/api/chat")
+    if "think" in kwargs["json"]:
+        return httpx.Response(400, json={"error": "model does not support thinking"}, request=request)
+    return httpx.Response(200, json={"message": {"content": '{"known": true, "answer": "До 110 дней.", "source": 1}'}}, request=request)
+llm.httpx.post = picky
+code, data = ask({"q": GOOD})
+check("модель не знает think: повтор без него, ответ от модели", code == 200 and data["engine"] == "модель" and calls == [True, False], f"{calls} {data.get('engine')}")
+sent = {}
+def spy(*args, **kwargs):
+    sent.update(kwargs["json"])
+    request = httpx.Request("POST", "http://model.test/api/chat")
+    return httpx.Response(200, json={"message": {"content": '{"known": true, "answer": "До 110 дней.", "source": 1}'}}, request=request)
+llm.httpx.post = spy
+ask({"q": GOOD})
+check("по умолчанию в запросе think: false", sent.get("think") is False, sent.get("think"))
 model(error=httpx.ReadTimeout("timeout"))
 code, data = ask({"q": GOOD})
 check("модель не ответила вовремя: ответ из базы", code == 200 and data["engine"] == "поиск" and data["known"], data)
