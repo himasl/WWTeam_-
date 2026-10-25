@@ -17,6 +17,14 @@ function rows(id, items, make) {
   $(id).parentElement.hidden = items.length === 0;
 }
 
+function withTitle(o) {
+  const td = cell(o.question);
+  const small = document.createElement("small");
+  small.textContent = o.title;
+  td.append(small);
+  return [td, cell(o.n, "n")];
+}
+
 fetch("/api/stats").then(async (r) => {
   const s = await r.json();
   if (!r.ok) throw { detail: s.detail };
@@ -24,6 +32,10 @@ fetch("/api/stats").then(async (r) => {
 }).then((s) => {
   $("total").textContent = s.total;
   $("share").textContent = (s.total ? Math.round((s.known / s.total) * 100) : 0) + "%";
+  if (s.rated) {
+    $("helped").textContent = Math.round((s.helped / s.rated) * 100) + "%";
+    $("helped-note").textContent = "ответов помогли, отметок: " + s.rated;
+  }
   $("ms").textContent = (s.ms / 1000).toFixed(1).replace(".", ",") + " с";
   $("escalated").textContent = s.escalated;
   rows("gaps", s.gaps, (g) => {
@@ -36,18 +48,11 @@ fetch("/api/stats").then(async (r) => {
     }
     return [td, cell(g.n, "n")];
   });
-  rows("often", s.often, (o) => {
-    const td = cell(o.question);
-    const small = document.createElement("small");
-    small.textContent = o.title;
-    td.append(small);
-    return [td, cell(o.n, "n")];
-  });
+  rows("unhelpful", s.unhelpful, withTitle);
+  rows("often", s.often, withTitle);
   rows("topics", s.topics, (t) => [cell(t.topic), cell(t.n, "n")]);
 }).catch((e) => {
-  const p = document.createElement("p");
-  p.className = "lead";
-  p.textContent = e.detail || "Сервер не отвечает, обновите страницу позже.";
-  document.querySelector(".tiles").replaceWith(p);
-  document.querySelector(".cols").hidden = true;
+  $("error").hidden = false;
+  $("error").textContent = e.detail || "Сервер не отвечает, обновите страницу позже.";
+  $("content").hidden = true;
 });

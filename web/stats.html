@@ -2,45 +2,56 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1f3d">
 <title>WПомощник: аналитика</title>
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="statsbody">
 <header class="top">
   <div class="brand"><b>W</b>Помощник</div>
   <nav>
-    <a href="/">Встреча</a>
-    <a class="on" href="/stats">Аналитика</a>
+    <a href="/">К встрече</a>
   </nav>
 </header>
 <main class="page">
-  <h1>Вопросы команды</h1>
-  <p class="lead">Что сотрудники спрашивают на встречах и на какие вопросы в базе знаний нет ответа.</p>
+  <h1 class="title">Вопросы команды</h1>
+  <p class="lead">Что сотрудники спрашивают на встречах, где ответы помогают и чего не хватает в базе знаний.</p>
+  <p class="lead" id="error" hidden></p>
 
-  <div class="tiles">
-    <div class="tile"><b id="total">0</b><span>вопросов задано</span></div>
-    <div class="tile"><b id="share">0%</b><span>вопросов с ответом из базы</span></div>
-    <div class="tile"><b id="ms">0 с</b><span>среднее время ответа</span></div>
-    <div class="tile"><b id="escalated">0</b><span>передано в поддержку</span></div>
-  </div>
-
-  <div class="cols">
-    <div class="box">
-      <h2>Пробелы в базе знаний</h2>
-      <table><thead><tr><th>Вопрос без ответа</th><th class="n">Раз</th></tr></thead><tbody id="gaps"></tbody></table>
-      <p class="empty" id="gaps-empty">Пока на все вопросы нашёлся ответ.</p>
+  <div id="content">
+    <div class="tiles">
+      <div class="card tile"><b id="total">0</b><span>вопросов задано</span></div>
+      <div class="card tile"><b id="share">0%</b><span>с ответом из базы знаний</span></div>
+      <div class="card tile"><b id="helped">—</b><span id="helped-note">ответ помог, отметок пока нет</span></div>
+      <div class="card tile"><b id="ms">0 с</b><span>среднее время ответа</span></div>
+      <div class="card tile"><b id="escalated">0</b><span>передано в поддержку</span></div>
     </div>
-    <div>
-      <div class="box" style="margin-bottom:22px">
-        <h2>Частые вопросы</h2>
-        <table><thead><tr><th>Вопрос</th><th class="n">Раз</th></tr></thead><tbody id="often"></tbody></table>
-        <p class="empty" id="often-empty">Вопросов пока нет. Задайте первый на вкладке «Встреча».</p>
+
+    <div class="cols">
+      <div>
+        <div class="card box">
+          <h2>Пробелы в базе знаний</h2>
+          <table><thead><tr><th>Вопрос без ответа</th><th class="n">Раз</th></tr></thead><tbody id="gaps"></tbody></table>
+          <p class="empty" id="gaps-empty">Пока на все вопросы нашёлся ответ.</p>
+        </div>
+        <div class="card box">
+          <h2>Ответ не помог</h2>
+          <table><thead><tr><th>Вопрос</th><th class="n">Раз</th></tr></thead><tbody id="unhelpful"></tbody></table>
+          <p class="empty" id="unhelpful-empty">Отметок «не помог» пока нет.</p>
+        </div>
       </div>
-      <div class="box">
-        <h2>Темы</h2>
-        <table><thead><tr><th>Тема</th><th class="n">Раз</th></tr></thead><tbody id="topics"></tbody></table>
-        <p class="empty" id="topics-empty">Темы появятся после первых ответов.</p>
+      <div>
+        <div class="card box">
+          <h2>Частые вопросы</h2>
+          <table><thead><tr><th>Вопрос</th><th class="n">Раз</th></tr></thead><tbody id="often"></tbody></table>
+          <p class="empty" id="often-empty">Вопросов пока нет. Задайте первый на вкладке «Встреча».</p>
+        </div>
+        <div class="card box">
+          <h2>Темы</h2>
+          <table><thead><tr><th>Тема</th><th class="n">Раз</th></tr></thead><tbody id="topics"></tbody></table>
+          <p class="empty" id="topics-empty">Темы появятся после первых ответов.</p>
+        </div>
       </div>
     </div>
   </div>

@@ -8,6 +8,9 @@ os.environ["OLLAMA_URL"] = "http://model.test"
 os.environ["DB_PATH"] = str(Path(tempfile.mkdtemp()) / "log.db")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import json
+import sqlite3
+
 import httpx
 from fastapi.testclient import TestClient
 
@@ -118,6 +121,51 @@ r = client.post("/api/escalate", json={"id": "abc"})
 check("эскалация с id не числом: 400", r.status_code == 400, r.text)
 r = client.get("/api/stats")
 check("статистика: 200", r.status_code == 200 and r.json()["total"] >= 1, r.text)
+
+print("Отзывы")
+model(error=httpx.ConnectError("refused"))
+code, data = ask({"q": GOOD})
+r = client.post("/api/feedback", json={"id": data["id"], "helpful": True})
+check("отметка «помог»: 200", r.status_code == 200, r.text)
+code, data2 = ask({"q": "сколько стоит выпуск стикера"})
+client.post("/api/feedback", json={"id": data2["id"], "helpful": False})
+s = client.get("/api/stats").json()
+check("статистика считает отметки", s["rated"] == 2 and s["helped"] == 1 and len(s["unhelpful"]) == 1, s)
+r = client.post("/api/feedback", json={"id": 999999, "helpful": True})
+check("отметка несуществующего вопроса: 404", r.status_code == 404, r.text)
+r = client.post("/api/feedback", json={"id": data["id"], "helpful": "да"})
+check("отметка не булевым значением: 400", r.status_code == 400, r.text)
+
+print("Потоковый ответ")
+def stream(body):
+    r = client.post("/api/ask/stream", json=body)
+    return r.status_code, [json.loads(x) for x in r.text.splitlines() if x.strip()]
+model('{"known": true, "answer": "До 110 дней.", "source": 1}')
+code, events = stream({"q": GOOD})
+check("найденные разделы, затем ответ", code == 200 and [e["stage"] for e in events] == ["found", "done"] and events[0]["sections"] and events[1]["known"], events)
+code, events = stream({"q": "какой курс доллара"})
+check("вопрос вне базы: сразу готовый отказ", code == 200 and [e["stage"] for e in events] == ["done"] and not events[0]["known"], events)
+r = client.post("/api/ask/stream", json={"q": ""})
+check("пустой вопрос в потоке: 400 до начала потока", r.status_code == 400, r.text)
+code, events = stream({"q": "сколько стоит обслуживание карты", "product": "Дебетовая «Карта для жизни»"})
+check("вопрос с выбранным продуктом", code == 200 and events[-1]["known"], events[-1])
+r = client.get("/api/products").json()
+check("каталог: продукты с примерами и чек-листами", r["products"] and all(p["examples"] and p["checklist"] for p in r["products"]) and r["unknown"], r)
+check("памятки нет среди продуктов", all("Памятка" not in p["title"] for p in r["products"]))
+
+print("Старая база журнала")
+old = Path(tempfile.mkdtemp()) / "old.db"
+con = sqlite3.connect(old)
+con.execute("""create table log (id integer primary key, ts real, question text, known integer, topic text,
+    title text, ms integer, engine text, novice integer, escalated integer default 0)""")
+con.execute("insert into log (ts, question, known) values (1, 'старый вопрос', 1)")
+con.commit()
+con.close()
+keep = config.DB_PATH
+config.DB_PATH = old
+r = client.post("/api/feedback", json={"id": 1, "helpful": True})
+check("журнал без колонки отметок обновляется сам", r.status_code == 200, r.text)
+config.DB_PATH = keep
 check("health: журнал доступен", client.get("/api/health").json()["db"] is True)
 
 good_path = config.DB_PATH
@@ -130,6 +178,8 @@ r = client.get("/api/stats")
 check("журнал недоступен: статистика 503", r.status_code == 503 and "detail" in r.json(), r.text)
 r = client.post("/api/escalate", json={"id": 1})
 check("журнал недоступен: эскалация 503", r.status_code == 503, r.text)
+r = client.post("/api/feedback", json={"id": 1, "helpful": True})
+check("журнал недоступен: отметка 503", r.status_code == 503, r.text)
 check("health: журнал недоступен", client.get("/api/health").json()["db"] is False)
 config.DB_PATH = good_path
 

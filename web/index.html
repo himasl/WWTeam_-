@@ -2,79 +2,122 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1f3d">
 <title>WПомощник</title>
+<link rel="preload" href="/fonts/onest-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header class="top">
   <div class="brand"><b>W</b>Помощник</div>
+  <label class="meet">
+    <span>Встреча</span>
+    <select id="product" aria-label="Продукт встречи"><option value="">Любой продукт</option></select>
+  </label>
+  <button type="button" class="ghost" id="reset"><span class="long">Новая встреча</span><span class="short">Новая</span></button>
   <nav>
-    <a class="on" href="/">Встреча</a>
     <a href="/stats">Аналитика</a>
   </nav>
-  <label class="switch">
+  <label class="switch" title="Режим новичка: термины простыми словами">
     <input type="checkbox" id="novice">
     <i></i>
-    <span>Режим новичка</span>
+    <span>Новичок</span>
   </label>
 </header>
 
 <main class="page">
-  <div class="products" id="products"><span>Продукт встречи</span></div>
+  <section class="flow">
+    <div class="card intro" id="intro">
+      <h1>Спросите так, как спросил клиент</h1>
+      <p class="scope" id="scope-yes"></p>
+      <p class="scope" id="scope-no"></p>
+      <h2>Например</h2>
+      <div class="examples" id="examples"></div>
+    </div>
 
-  <div class="work">
-    <section>
-      <form class="askbar" id="form">
-        <input id="q" maxlength="500" autocomplete="off" placeholder="Спросите голосом или текстом" aria-label="Вопрос">
-        <button type="button" class="mic" id="mic" aria-label="Голосовой ввод">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    <div class="card status" id="status" hidden aria-live="polite">
+      <div class="asked" id="status-q"></div>
+      <ol class="steps">
+        <li id="step-search"><div>Ищу в базе знаний</div></li>
+        <li id="step-found"><div><span id="found-label">Подбираю разделы</span><small id="found-list"></small></div></li>
+        <li id="step-model"><div>Формулирую ответ</div></li>
+      </ol>
+      <div class="bar">
+        <span class="timer" id="timer">0,0 с</span>
+        <button type="button" class="plain" id="cancel">Отменить</button>
+      </div>
+    </div>
+
+    <article class="card answer" id="answer" hidden aria-live="polite">
+      <div class="asked" id="asked"></div>
+      <div class="text" id="text"></div>
+      <div class="foot" id="foot"></div>
+      <div class="rate" id="rate" hidden>
+        <span>Ответ помог?</span>
+        <button type="button" data-helpful="1">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18 21H7"/></svg>
+          Помог
         </button>
-        <button class="send" id="send">Спросить</button>
-      </form>
+        <button type="button" data-helpful="0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h4v11h-4zM17 14l-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6 3h11"/></svg>
+          Не помог
+        </button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </article>
 
-      <div class="examples" id="examples">
-        <p>Примеры вопросов</p>
-        <div></div>
-      </div>
+    <div class="card list" id="more" hidden>
+      <h3>Ещё в базе знаний</h3>
+      <div></div>
+    </div>
 
-      <article class="answer" id="answer" hidden aria-live="polite">
-        <div class="asked" id="asked"></div>
-        <div class="text" id="text"></div>
-        <div class="foot" id="foot"></div>
-        <div class="meta" id="meta"></div>
-      </article>
+    <div class="card list" id="history" hidden>
+      <h3>Ранее на этой встрече</h3>
+      <div></div>
+    </div>
+  </section>
 
-      <div class="more" id="more" hidden>
-        <h3>Ещё в базе знаний</h3>
-        <div></div>
-      </div>
-    </section>
-
-    <aside class="side">
-      <div class="box">
-        <h2>Уточните у клиента</h2>
-        <ul id="ask"></ul>
-        <p class="empty" id="ask-empty">Подсказки появятся после ответа.</p>
-      </div>
-      <div class="box offer">
-        <h2>Предложите</h2>
-        <ul id="offer"></ul>
-        <p class="empty" id="offer-empty">Подсказки появятся после ответа.</p>
-      </div>
-      <div class="box" id="terms-box" hidden>
-        <h2>Термины простыми словами</h2>
-        <dl id="terms"></dl>
-      </div>
-      <div class="box check">
-        <h2>Чек-лист встречи</h2>
-        <select id="list-pick" aria-label="Тип встречи"></select>
-        <div id="list"></div>
-        <p class="note">Чек-листы составлены командой проекта, это не регламент банка.</p>
-      </div>
-    </aside>
-  </div>
+  <aside class="side" id="side" data-tab="ask">
+    <div class="tabs" role="tablist" aria-label="Подсказки">
+      <button type="button" role="tab" data-tab="ask" aria-selected="true">Уточните</button>
+      <button type="button" role="tab" data-tab="offer" aria-selected="false">Предложите</button>
+      <button type="button" role="tab" data-tab="terms" aria-selected="false" hidden>Термины</button>
+      <button type="button" role="tab" data-tab="check" aria-selected="false">Чек-лист</button>
+    </div>
+    <div class="card box" data-tab="ask">
+      <h2>Уточните у клиента</h2>
+      <ul id="ask"></ul>
+      <p class="empty" id="ask-empty">Подсказки появятся после ответа.</p>
+    </div>
+    <div class="card box" data-tab="offer">
+      <h2>Предложите</h2>
+      <ul id="offer"></ul>
+      <p class="empty" id="offer-empty">Подсказки появятся после ответа.</p>
+    </div>
+    <div class="card box" data-tab="terms" id="terms-box" hidden>
+      <h2>Термины простыми словами</h2>
+      <dl id="terms"></dl>
+    </div>
+    <div class="card box check" data-tab="check">
+      <h2>Чек-лист встречи</h2>
+      <select id="list-pick" aria-label="Тип встречи"></select>
+      <p class="progress" id="list-progress"></p>
+      <div id="list"></div>
+      <p class="note">Чек-листы составлены командой проекта, это не регламент банка.</p>
+    </div>
+  </aside>
 </main>
+
+<div class="dock">
+  <form id="form">
+    <input id="q" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="Вопрос клиента" aria-label="Вопрос">
+    <button type="button" class="mic" id="mic" aria-label="Сказать вопрос голосом">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </button>
+    <button class="send" id="send" aria-label="Спросить"><span class="long">Спросить</span><svg class="short" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </form>
+</div>
 <script src="/app.js"></script>
 </body>
 </html>

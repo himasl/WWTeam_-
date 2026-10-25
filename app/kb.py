@@ -39,6 +39,9 @@ def load():
                 "actual": meta.get("actual", ""),
                 "ask": [x.strip() for x in meta.get("ask", "").split("|") if x.strip()],
                 "offer": [x.strip() for x in meta.get("offer", "").split("|") if x.strip()],
+                "examples": [x.strip() for x in meta.get("examples", "").split("|") if x.strip()],
+                "checklist": meta.get("checklist", ""),
+                "product": meta.get("product", "yes") != "no",
                 "section": name.strip(),
                 "lines": lines,
                 "tokens": stems(meta["title"]) * 2 + stems(name) * 2 + stems(" ".join(lines)),
@@ -49,6 +52,14 @@ def load():
 CHUNKS = load()
 GLOSSARY = json.loads((KB / "glossary.json").read_text(encoding="utf-8"))
 CHECKLISTS = json.loads((KB / "checklists.json").read_text(encoding="utf-8"))
+CATALOG = json.loads((KB / "catalog.json").read_text(encoding="utf-8"))
+
+PRODUCTS = []
+for c in CHUNKS:
+    if c["product"] and all(p["title"] != c["title"] for p in PRODUCTS):
+        PRODUCTS.append({"title": c["title"], "topic": c["topic"], "checklist": c["checklist"], "examples": c["examples"]})
+order = CATALOG["topics"]
+PRODUCTS.sort(key=lambda p: order.index(p["topic"]) if p["topic"] in order else len(order))
 
 N = len(CHUNKS)
 AVG = sum(len(c["tokens"]) for c in CHUNKS) / N

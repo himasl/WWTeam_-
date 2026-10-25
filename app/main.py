@@ -1,20 +1,21 @@
+import json
 import logging
 import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StrictBool, StrictInt, StrictStr
 
-from . import db, kb, llm
+from . import config, db, kb, llm
 from .config import MAX_QUESTION, ROOT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("wpomoshnik")
 
 app = FastAPI(title="WПомощник")
-PRODUCTS = list(dict.fromkeys(c["title"] for c in kb.CHUNKS))
+TITLES = {p["title"] for p in kb.PRODUCTS}
 
 
 class Ask(BaseModel):
@@ -25,6 +26,11 @@ class Ask(BaseModel):
 
 class Mark(BaseModel):
     id: StrictInt
+
+
+class Feedback(BaseModel):
+    id: StrictInt
+    helpful: StrictBool
 
 
 @app.exception_handler(RequestValidationError)
@@ -60,22 +66,27 @@ def source(chunk, q):
     }
 
 
-@app.post("/api/ask")
-def ask(body: Ask):
-    start = time.time()
+def check(body):
     question = " ".join(body.q.split())
     if not question:
         raise HTTPException(400, "Вопрос пустой")
     if len(question) > MAX_QUESTION:
         raise HTTPException(400, f"Вопрос длиннее {MAX_QUESTION} символов, сократите его")
-    if body.product and body.product not in PRODUCTS:
+    if body.product and body.product not in TITLES:
         raise HTTPException(400, "Нет такого продукта")
-    chunks, cover, q = kb.search(question, body.product)
+    return question
+
+
+def run(question, product, novice):
+    start = time.time()
+    chunks, cover, q = kb.search(question, product)
     out = {"known": False, "answer": "", "sources": [], "ask": [], "offer": [], "terms": [], "engine": "поиск"}
     level = kb.level(cover) if chunks else "none"
     if level != "none":
+        yield {"stage": "found", "model": config.LLM == "on",
+               "sections": [{"title": c["title"], "section": c["section"]} for c in chunks]}
         best = chunks[0]
-        reply = llm.ask(question, chunks, body.novice)
+        reply = llm.ask(question, chunks, novice)
         if reply:
             out["engine"] = "модель"
             out["known"] = bool(reply.get("known")) and bool(reply["answer"])
@@ -90,8 +101,8 @@ def ask(body: Ask):
             out["ask"] = best["ask"]
             out["offer"] = best["offer"]
         if out["known"]:
-            out["sources"] = [source(best, q)] + [source(c, q) for c in chunks if c is not best][:2]
-            if body.novice:
+            out["sources"] = [source(best, q)] + [source(c, q) for c in chunks if c is not best and c["title"] == best["title"]][:2]
+            if novice:
                 out["terms"] = kb.terms(question + " " + out["answer"])
         else:
             out.update(answer="", ask=[], offer=[])
@@ -100,16 +111,47 @@ def ask(body: Ask):
     best = out["sources"][0] if out["known"] else None
     topic = next((c["topic"] for c in chunks if best and c["title"] == best["title"]), "")
     try:
-        out["id"] = db.add(question, out["known"], topic, best["title"] if best else "", ms, out["engine"], body.novice)
+        out["id"] = db.add(question, out["known"], topic, best["title"] if best else "", ms, out["engine"], novice)
     except db.Unavailable as e:
         log.error("вопрос не записан в журнал: %s", e)
         out["id"] = None
-    return out
+    yield {"stage": "done", **out}
+
+
+@app.post("/api/ask")
+def ask(body: Ask):
+    question = check(body)
+    for event in run(question, body.product, body.novice):
+        pass
+    event.pop("stage")
+    return event
+
+
+@app.post("/api/ask/stream")
+def ask_stream(body: Ask):
+    question = check(body)
+
+    def lines():
+        try:
+            for event in run(question, body.product, body.novice):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except Exception as e:
+            log.error("ошибка при ответе на вопрос", exc_info=e)
+            yield json.dumps({"stage": "error", "detail": "Внутренняя ошибка сервера"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson")
 
 
 @app.post("/api/escalate")
 def escalate(body: Mark):
     if not db.escalate(body.id):
+        raise HTTPException(404, "Вопрос не найден")
+    return {"ok": True}
+
+
+@app.post("/api/feedback")
+def feedback(body: Feedback):
+    if not db.feedback(body.id, body.helpful):
         raise HTTPException(404, "Вопрос не найден")
     return {"ok": True}
 
@@ -126,7 +168,7 @@ def checklists():
 
 @app.get("/api/products")
 def products():
-    return PRODUCTS
+    return {"products": kb.PRODUCTS, "known": kb.CATALOG["known"], "examples": kb.CATALOG["examples"], "unknown": kb.CATALOG["unknown"]}
 
 
 @app.get("/api/health")
