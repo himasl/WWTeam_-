@@ -117,7 +117,8 @@ def terms(text):
     found = []
     for term, meaning in GLOSSARY.items():
         key = term.lower().replace("ё", "е")
-        if key[:-2] in low if len(key) > 6 else key in low:
+        search_key = key[:-2] if len(key) > 6 else key
+        if search_key in low:
             found.append({"term": term, "meaning": meaning})
     return found[:4]
 

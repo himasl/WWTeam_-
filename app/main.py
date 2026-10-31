@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from typing import Literal, Optional
 
-from pydantic import BaseModel, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr
 
 from . import config, db, kb, llm, scenarios
 from .config import MAX_QUESTION, ROOT
@@ -33,14 +33,14 @@ class Person(BaseModel):
 
 
 class Facts(BaseModel):
-    facts: dict[str, StrictStr] = {}
+    facts: dict[str, StrictStr] = Field(default_factory=dict)
 
 
 class Run(BaseModel):
     scenario: StrictStr
     person: Optional[StrictInt] = None
-    facts: dict[str, StrictStr] = {}
-    checks: dict[str, list[StrictBool]] = {}
+    facts: dict[str, StrictStr] = Field(default_factory=dict)
+    checks: dict[str, list[StrictBool]] = Field(default_factory=dict)
     ms: StrictInt = 0
 
 
@@ -99,12 +99,17 @@ def source(chunk, q):
     }
 
 
-def check(body):
-    question = " ".join(body.q.split())
+def question_text(value):
+    question = " ".join(value.split())
     if not question:
         raise HTTPException(400, "Вопрос пустой")
     if len(question) > MAX_QUESTION:
         raise HTTPException(400, f"Вопрос длиннее {MAX_QUESTION} символов, сократите его")
+    return question
+
+
+def check(body):
+    question = question_text(body.q)
     if body.product and body.product not in TITLES:
         raise HTTPException(400, "Нет такого продукта")
     known_person(body.person)
@@ -122,35 +127,43 @@ def scenario(sid):
     return scenarios.ALL[sid]
 
 
+def answer_from_sections(question, chunks, q, level, novice):
+    out = {"known": False, "answer": "", "sources": [], "ask": [], "offer": [], "terms": [], "engine": "поиск"}
+    if level == "none":
+        return out
+
+    best = chunks[0]
+    reply = llm.ask(question, chunks, novice)
+    if reply:
+        out["engine"] = "модель"
+        out["known"] = bool(reply.get("known")) and bool(reply["answer"])
+        if 1 <= reply["source"] <= len(chunks):
+            best = chunks[reply["source"] - 1]
+        out["answer"] = reply["answer"]
+        out["ask"] = reply["ask"] or best["ask"]
+        out["offer"] = reply["offer"] or best["offer"]
+    elif level == "high":
+        out["known"] = True
+        out["answer"] = " ".join(kb.best_lines(best, q))
+        out["ask"] = best["ask"]
+        out["offer"] = best["offer"]
+    if out["known"]:
+        out["sources"] = [source(best, q)] + [source(c, q) for c in chunks if c is not best and c["title"] == best["title"]][:2]
+        if novice:
+            out["terms"] = kb.terms(question + " " + out["answer"])
+    else:
+        out.update(answer="", ask=[], offer=[])
+    return out
+
+
 def run(question, product, novice, person=None):
     start = time.time()
     chunks, cover, q = kb.search(question, product)
-    out = {"known": False, "answer": "", "sources": [], "ask": [], "offer": [], "terms": [], "engine": "поиск"}
     level = kb.level(cover) if chunks else "none"
     if level != "none":
         yield {"stage": "found", "model": config.LLM == "on",
                "sections": [{"title": c["title"], "section": c["section"]} for c in chunks]}
-        best = chunks[0]
-        reply = llm.ask(question, chunks, novice)
-        if reply:
-            out["engine"] = "модель"
-            out["known"] = bool(reply.get("known")) and bool(reply["answer"])
-            if 1 <= reply["source"] <= len(chunks):
-                best = chunks[reply["source"] - 1]
-            out["answer"] = reply["answer"]
-            out["ask"] = reply["ask"] or best["ask"]
-            out["offer"] = reply["offer"] or best["offer"]
-        elif level == "high":
-            out["known"] = True
-            out["answer"] = " ".join(kb.best_lines(best, q))
-            out["ask"] = best["ask"]
-            out["offer"] = best["offer"]
-        if out["known"]:
-            out["sources"] = [source(best, q)] + [source(c, q) for c in chunks if c is not best and c["title"] == best["title"]][:2]
-            if novice:
-                out["terms"] = kb.terms(question + " " + out["answer"])
-        else:
-            out.update(answer="", ask=[], offer=[])
+    out = answer_from_sections(question, chunks, q, level, novice)
     ms = round((time.time() - start) * 1000)
     out["ms"] = ms
     best = out["sources"][0] if out["known"] else None
@@ -166,10 +179,9 @@ def run(question, product, novice, person=None):
 @app.post("/api/ask")
 def ask(body: Ask):
     question = check(body)
-    for event in run(question, body.product, body.novice, body.person):
-        pass
-    event.pop("stage")
-    return event
+    result = next(event for event in run(question, body.product, body.novice, body.person)
+                  if event["stage"] == "done")
+    return {key: value for key, value in result.items() if key != "stage"}
 
 
 @app.post("/api/ask/stream")
@@ -263,11 +275,7 @@ def run_list(person: Optional[int] = None):
 
 @app.post("/api/asks")
 def add_ask(body: Colleague):
-    question = " ".join(body.q.split())
-    if not question:
-        raise HTTPException(400, "Вопрос пустой")
-    if len(question) > MAX_QUESTION:
-        raise HTTPException(400, f"Вопрос длиннее {MAX_QUESTION} символов, сократите его")
+    question = question_text(body.q)
     known_person(body.person)
     return db.get_ask(db.add_ask(body.person, question, body.scenario, body.step, body.log_id))
 

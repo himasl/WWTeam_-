@@ -68,6 +68,26 @@ def ok():
         return False
 
 
+def _missed_stats(rows, scenario_catalog):
+    missed_top = {}
+    missed_groups = {}
+    for row in rows:
+        scenario = scenario_catalog.get(row["scenario"], {})
+        scenario_title = scenario.get("title", row["scenario"])
+        product = scenario.get("product", scenario_title)
+        for item in json.loads(row["missed"]):
+            key = (item["step"], item["item"])
+            missed_top[key] = missed_top.get(key, 0) + 1
+            group = (scenario_title, product)
+            missed_groups[group] = missed_groups.get(group, 0) + 1
+    return {
+        "missed_top": [{"step": step, "item": item, "n": n}
+                       for (step, item), n in sorted(missed_top.items(), key=lambda x: -x[1])[:12]],
+        "missed_by_scenario_product": [{"scenario": scene, "product": product, "n": n}
+                                       for (scene, product), n in sorted(missed_groups.items(), key=lambda x: -x[1])],
+    }
+
+
 def stats(scenario_catalog=None):
     def work(db):
         one = db.execute("""select count(*) total, coalesce(sum(known), 0) known,
@@ -81,17 +101,7 @@ def stats(scenario_catalog=None):
             group by lower(question) order by n desc, max(ts) desc limit 8""").fetchall()
         gaps = db.execute("""select min(question) question, count(*) n, max(escalated) escalated from log
             where known = 0 group by lower(question) order by n desc, max(ts) desc limit 12""").fetchall()
-        missed_top = {}
-        missed_groups = {}
-        for row in db.execute("select scenario, missed from runs"):
-            scenario = (scenario_catalog or {}).get(row["scenario"], {})
-            scenario_title = scenario.get("title", row["scenario"])
-            product = scenario.get("product", scenario_title)
-            for item in json.loads(row["missed"]):
-                key = (item["step"], item["item"])
-                missed_top[key] = missed_top.get(key, 0) + 1
-                group = (scenario_title, product)
-                missed_groups[group] = missed_groups.get(group, 0) + 1
+        missed = _missed_stats(db.execute("select scenario, missed from runs"), scenario_catalog or {})
         unanswered = db.execute("""select a.person, coalesce(p.name, 'без имени') name, count(*) n
             from asks a left join people p on p.id = a.person where a.status = 'open'
             group by a.person, p.name order by n desc, name""").fetchall()
@@ -106,10 +116,7 @@ def stats(scenario_catalog=None):
             "topics": [dict(r) for r in topics],
             "often": [dict(r) for r in often],
             "gaps": [dict(r) for r in gaps],
-            "missed_top": [{"step": step, "item": item, "n": n}
-                           for (step, item), n in sorted(missed_top.items(), key=lambda x: -x[1])[:12]],
-            "missed_by_scenario_product": [{"scenario": scene, "product": product, "n": n}
-                                            for (scene, product), n in sorted(missed_groups.items(), key=lambda x: -x[1])],
+            **missed,
             "unanswered_by_person": [dict(r) for r in unanswered],
         }
     return run(work)
