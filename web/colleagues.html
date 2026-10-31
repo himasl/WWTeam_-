@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1f3d">
+<title>WПомощник: вопросы коллег</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="statsbody">
+<header class="top">
+  <div class="brand"><b>W</b>Помощник</div>
+  <button type="button" class="ghost who-btn" id="who-btn">Кто вы?</button>
+  <nav>
+    <a href="/">К встрече</a>
+    <a href="/colleagues" class="on">Коллеги</a>
+    <a href="/stats">Аналитика</a>
+  </nav>
+</header>
+<main class="page">
+  <h1 class="title">Вопросы коллег</h1>
+  <p class="lead">Сотрудники спрашивают это прямо на встрече, когда в базе знаний нет ответа. Ваш ответ сразу появится у них на экране.</p>
+  <p class="lead" id="error" hidden></p>
+  <div class="cols">
+    <div>
+      <div class="card box">
+        <h2>Ждут ответа <span class="count" id="open-count"></span></h2>
+        <div id="open"></div>
+        <p class="empty" id="open-empty">Открытых вопросов нет.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card box">
+        <h2>Отвечено</h2>
+        <div id="done"></div>
+        <p class="empty" id="done-empty">Ответов пока нет.</p>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/people.js"></script>
+<script src="/colleagues.js"></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+{
+ "all": 248,
+ "base": 167,
+ "template": 81,
+ "with_complaint": 164,
+ "by_source": {
+  "DreamJob": 127,
+  "Отзовик": 40,
+  "kyrieros.ru": 0
+ },
+ "shares": [
+  {
+   "code": "P",
+   "problem": "Оплата и её расчёт",
+   "reviews": 52,
+   "share": 31.7,
+   "helps": "нет"
+  },
+  {
+   "code": "T",
+   "problem": "Личный авто и топливо",
+   "reviews": 34,
+   "share": 20.7,
+   "helps": "нет"
+  },
+  {
+   "code": "E",
+   "problem": "Прочее: найм, погода, коллектив",
+   "reviews": 33,
+   "share": 20.1,
+   "helps": "нет"
+  },
+  {
+   "code": "F",
+   "problem": "Штрафы и контроль",
+   "reviews": 25,
+   "share": 15.2,
+   "helps": "нет"
+  },
+  {
+   "code": "L",
+   "problem": "Нагрузка и маршруты встреч",
+   "reviews": 24,
+   "share": 14.6,
+   "helps": "нет"
+  },
+  {
+   "code": "M",
+   "problem": "Руководство и поддержка",
+   "reviews": 24,
+   "share": 14.6,
+   "helps": "частично"
+  },
+  {
+   "code": "K",
+   "problem": "Обучение и знание продуктов",
+   "reviews": 17,
+   "share": 10.4,
+   "helps": "да"
+  },
+  {
+   "code": "C",
+   "problem": "Трудные клиенты и сорванные встречи",
+   "reviews": 13,
+   "share": 7.9,
+   "helps": "частично"
+  },
+  {
+   "code": "S",
+   "problem": "Давление продаж и план",
+   "reviews": 12,
+   "share": 7.3,
+   "helps": "частично"
+  },
+  {
+   "code": "A",
+   "problem": "Сбои приложения и техники",
+   "reviews": 6,
+   "share": 3.7,
+   "helps": "нет"
+  }
+ ],
+ "mentor_mentions": [
+  "4",
+  "10",
+  "17",
+  "21",
+  "29",
+  "36",
+  "229",
+  "248"
+ ],
+ "product_related": 10.4,
+ "product_any": 35.4
+}

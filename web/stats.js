@@ -25,6 +25,20 @@ function withTitle(o) {
   return [td, cell(o.n, "n")];
 }
 
+function summaryRows(id, items, make) {
+  $(id).replaceChildren(...(items.length ? items : [{ empty: true }]).map((item) => {
+    const tr = document.createElement("tr");
+    if (item.empty) {
+      const td = cell("Нет данных");
+      td.colSpan = 2;
+      tr.append(td);
+    } else {
+      tr.append(...make(item));
+    }
+    return tr;
+  }));
+}
+
 fetch("/api/stats").then(async (r) => {
   const s = await r.json();
   if (!r.ok) throw { detail: s.detail };
@@ -51,6 +65,9 @@ fetch("/api/stats").then(async (r) => {
   rows("unhelpful", s.unhelpful, withTitle);
   rows("often", s.often, withTitle);
   rows("topics", s.topics, (t) => [cell(t.topic), cell(t.n, "n")]);
+  summaryRows("missed-top", s.missed_top, (m) => [cell(m.step + ": " + m.item), cell(m.n, "n")]);
+  summaryRows("missed-groups", s.missed_by_scenario_product, (m) => [cell(m.scenario + " / " + m.product), cell(m.n, "n")]);
+  summaryRows("unanswered-people", s.unanswered_by_person, (p) => [cell(p.name), cell(p.n, "n")]);
 }).catch((e) => {
   $("error").hidden = false;
   $("error").textContent = e.detail || "Сервер не отвечает, обновите страницу позже.";

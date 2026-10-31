@@ -16,8 +16,10 @@
     <select id="product" aria-label="Продукт встречи"><option value="">Любой продукт</option></select>
   </label>
   <button type="button" class="ghost" id="reset"><span class="long">Новая встреча</span><span class="short">Новая</span></button>
+  <button type="button" class="ghost who-btn" id="who-btn">Кто вы?</button>
   <nav>
-    <a href="/stats">Аналитика</a>
+    <a href="/colleagues">Коллеги</a>
+    <a href="/stats" class="wide">Аналитика</a>
   </nav>
   <label class="switch" title="Режим новичка: термины простыми словами">
     <input type="checkbox" id="novice">
@@ -29,12 +31,35 @@
 <main class="page">
   <section class="flow">
     <div class="card intro" id="intro">
-      <h1>Спросите так, как спросил клиент</h1>
-      <p class="scope" id="scope-yes"></p>
-      <p class="scope" id="scope-no"></p>
-      <h2>Например</h2>
-      <div class="examples" id="examples"></div>
+      <section id="scenes-box" hidden>
+        <h1>Какая у вас встреча?</h1>
+        <p class="scope">Помощник проведёт по шагам: что спросить у клиента, какой продукт подходит, что проговорить и что проверить перед уходом.</p>
+        <div class="scenes" id="scenes"></div>
+      </section>
+      <section>
+        <h1 id="free-title">Спросите так, как спросил клиент</h1>
+        <p class="scope" id="scope-yes"></p>
+        <p class="scope" id="scope-no"></p>
+        <h2>Например</h2>
+        <div class="examples" id="examples"></div>
+      </section>
     </div>
+
+    <article class="card scene" id="scene" hidden>
+      <div class="scene-top">
+        <span class="scene-name"><b id="scene-name"></b><span class="tag" id="scene-draft" hidden>черновик</span></span>
+        <span class="scene-count" id="scene-count"></span>
+      </div>
+      <div class="meter"><i id="scene-meter"></i></div>
+      <div class="scene-body" id="scene-body"></div>
+      <div class="scene-nav" id="scene-nav">
+        <button type="button" class="plain" id="scene-back">Назад</button>
+        <button type="button" class="plain" id="scene-ask">Спросить</button>
+        <button type="button" class="go" id="scene-next">Далее</button>
+      </div>
+    </article>
+
+    <div class="card news" id="news" hidden></div>
 
     <div class="card status" id="status" hidden aria-live="polite">
       <div class="asked" id="status-q"></div>
@@ -64,6 +89,7 @@
           Не помог
         </button>
       </div>
+      <div class="colleague" id="colleague" hidden></div>
       <div class="meta" id="meta"></div>
     </article>
 
@@ -80,10 +106,15 @@
 
   <aside class="side" id="side" data-tab="ask">
     <div class="tabs" role="tablist" aria-label="Подсказки">
+      <button type="button" role="tab" data-tab="steps" aria-selected="false" hidden>Шаги</button>
       <button type="button" role="tab" data-tab="ask" aria-selected="true">Уточните</button>
       <button type="button" role="tab" data-tab="offer" aria-selected="false">Предложите</button>
       <button type="button" role="tab" data-tab="terms" aria-selected="false" hidden>Термины</button>
       <button type="button" role="tab" data-tab="check" aria-selected="false">Чек-лист</button>
+    </div>
+    <div class="card box steps-box" data-tab="steps" id="steps-box" hidden>
+      <h2>Шаги встречи</h2>
+      <ol id="scene-steps"></ol>
     </div>
     <div class="card box" data-tab="ask">
       <h2>Уточните у клиента</h2>
@@ -99,7 +130,7 @@
       <h2>Термины простыми словами</h2>
       <dl id="terms"></dl>
     </div>
-    <div class="card box check" data-tab="check">
+    <div class="card box check" data-tab="check" id="check-box">
       <h2>Чек-лист встречи</h2>
       <select id="list-pick" aria-label="Тип встречи"></select>
       <p class="progress" id="list-progress"></p>
@@ -118,6 +149,7 @@
     <button class="send" id="send" aria-label="Спросить"><span class="long">Спросить</span><svg class="short" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
   </form>
 </div>
+<script src="/people.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

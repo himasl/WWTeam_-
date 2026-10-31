@@ -12,6 +12,8 @@
   <div class="brand"><b>W</b>Помощник</div>
   <nav>
     <a href="/">К встрече</a>
+    <a href="/colleagues">Коллеги</a>
+    <a href="/stats" class="on">Аналитика</a>
   </nav>
 </header>
 <main class="page">
@@ -26,6 +28,16 @@
       <div class="card tile"><b id="helped">—</b><span id="helped-note">ответ помог, отметок пока нет</span></div>
       <div class="card tile"><b id="ms">0 с</b><span>среднее время ответа</span></div>
       <div class="card tile"><b id="escalated">0</b><span>передано в поддержку</span></div>
+    </div>
+
+    <div class="card box">
+      <h2>Пропуски встреч и вопросы без ответа</h2>
+      <h3>Чаще пропускают</h3>
+      <table><thead><tr><th>Шаг и пункт</th><th class="n">Раз</th></tr></thead><tbody id="missed-top"></tbody></table>
+      <h3>Пропуски по сценарию и продукту</h3>
+      <table><thead><tr><th>Сценарий / продукт</th><th class="n">Пунктов</th></tr></thead><tbody id="missed-groups"></tbody></table>
+      <h3>Открытые вопросы по сотрудникам</h3>
+      <table><thead><tr><th>Сотрудник</th><th class="n">Вопросов</th></tr></thead><tbody id="unanswered-people"></tbody></table>
     </div>
 
     <div class="cols">
